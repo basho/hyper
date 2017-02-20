@@ -1,6 +1,6 @@
 {application, hyper,
  [
-  {description, ""},
+  {description, "HyperLogLog"},
   {vsn, "1.0"},
   {registered, []},
   {applications, [

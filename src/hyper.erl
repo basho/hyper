@@ -132,12 +132,15 @@ card(#hyper{registers = {Mod, Registers0}, p = P}) ->
 precision(#hyper{p = Precision}) ->
     Precision.
 
+-spec bytes(#hyper{}) -> integer().
 bytes(#hyper{registers = {Mod, Registers}}) ->
     Mod:bytes(Registers).
 
+-spec compact(#hyper{}) -> #hyper{}.
 compact(#hyper{registers = {Mod, Registers}} = Hyper) ->
     Hyper#hyper{registers = {Mod, Mod:compact(Registers)}}.
 
+-spec reduce_precision(precision(), #hyper{}) -> #hyper{}.
 reduce_precision(P, #hyper{p = OldP, registers = {Mod, Registers}} = Hyper)
   when P < OldP ->
     Hyper#hyper{p = P, registers = {Mod, Mod:reduce_precision(P, Registers)}};
@@ -268,14 +271,15 @@ estimate_report() ->
 
     io:format(F, "p,card,median,p05,p95~n", []),
 
-    [begin
+    _ = lists:foreach(
+        fun(P) ->
          Stats = [run_report(P, Card, Repetitions) || Card <- Cardinalities],
-         lists:map(fun ({Card, Median, P05, P95}) ->
+         lists:foreach(fun ({Card, Median, P05, P95}) ->
                            io:format(F,
                                      "~p,~p,~p,~p,~p~n",
                                      [P, Card, Median, P05, P95])
                    end, Stats)
-     end || P <- Ps],
+        end, Ps),
     io:format("~n"),
     file:close(F).
 
@@ -285,7 +289,9 @@ run_report(P, Card, Repetitions) ->
                           fun (I) ->
                                   io:format("~p values with p=~p, rep ~p~n",
                                             [Card, P, I]),
-                                  random:seed(erlang:now()),
+                                  _ = random:seed(erlang:phash2([node()]),
+                                                  erlang:monotonic_time(),
+                                                  erlang:unique_integer()),
                                   Elements = generate_unique(Card),
                                   Estimate = card(insert_many(Elements, new(P))),
                                   abs(Card - Estimate) / Card
@@ -309,7 +315,7 @@ perf_report() ->
     Ps      = [15],
     Cards   = [1, 100, 500, 1000, 2500, 5000, 10000,
                15000, 25000, 50000, 100000, 1000000],
-    Mods    = [hyper_gb, hyper_array, hyper_bisect, hyper_binary, hyper_carray],
+    Mods    = [hyper_gb, hyper_array, hyper_binary, hyper_carray],
     Repeats = 10,
 
     Time = fun (F, Args) ->
@@ -328,7 +334,7 @@ perf_report() ->
 
     R = [begin
              io:format("."),
-             random:seed(1, 2, 3),
+             _ = random:seed(1, 2, 3),
 
              M = trunc(math:pow(2, P)),
              InsertUs = Time(fun (Values, H) ->

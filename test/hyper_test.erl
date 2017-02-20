@@ -1,17 +1,14 @@
 -module(hyper_test).
--include_lib("proper/include/proper.hrl").
+-include_lib("eqc/include/eqc.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -record(hyper, {p, registers}). % copy of #hyper in hyper.erl
 
 hyper_test_() ->
-    ProperOpts = [{max_size, 1000},
-                  {numtests, 100},
-                  {to_file, user}],
     RunProp = fun (P) ->
                       {timeout, 600,
                        fun () ->
-                               ?assert(proper:quickcheck(P, ProperOpts))
+                               ?assert(eqc:quickcheck(P))
                        end}
               end,
 
@@ -28,13 +25,10 @@ hyper_test_() ->
       ?_test(many_union_t()),
       ?_test(union_t()),
       ?_test(union_mixed_precision_t()),
-      ?_test(small_big_union_t()),
       ?_test(intersect_card_t()),
       ?_test(bad_serialization_t()),
-      {"Union property with hyper_carry", RunProp(prop_union(hyper_carray))},
       {"Union property with hyper_binary", RunProp(prop_union(hyper_binary))},
       {"Union property with hyper_array", RunProp(prop_union(hyper_array))},
-      {"Union property with hyper_bisect", RunProp(prop_union(hyper_bisect))},
       {"Union property with hyper_gb", RunProp(prop_union(hyper_gb))},
       RunProp(prop_set()),
       RunProp(prop_serialize())
@@ -65,7 +59,7 @@ serialization_t() ->
 
 
 reduce_precision_t() ->
-    random:seed(1, 2, 3),
+    random:seed(1, 2, 3), % TODO - Using rand instead of causes this test to consistently fail
     Card = 1000,
     Values = generate_unique(Card),
     [begin
@@ -89,15 +83,11 @@ backend_t() ->
 
     Gb     = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_gb))),
     Array  = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_array))),
-    Bisect = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_bisect))),
     Binary = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_binary))),
-    Carray = hyper:compact(hyper:insert_many(Values, hyper:new(P, hyper_carray))),
 
     {hyper_gb    , GbRegisters}     = Gb#hyper.registers,
     {hyper_array , ArrayRegisters}  = Array#hyper.registers,
-    {hyper_bisect, BisectRegisters} = Bisect#hyper.registers,
     {hyper_binary, BinaryRegisters} = Binary#hyper.registers,
-    {hyper_carray, CarrayRegisters} = Carray#hyper.registers,
 
     ExpectedRegisters = lists:foldl(
                           fun (Value, Registers) ->
@@ -126,27 +116,19 @@ backend_t() ->
 
     ?assertEqual(ExpectedBytes, hyper_gb:encode_registers(GbRegisters)),
     ?assertEqual(ExpectedBytes, hyper_array:encode_registers(ArrayRegisters)),
-    ?assertEqual(ExpectedBytes, hyper_bisect:encode_registers(BisectRegisters)),
     ?assertEqual(ExpectedBytes, hyper_binary:encode_registers(BinaryRegisters)),
-    ?assertEqual(ExpectedBytes, hyper_carray:encode_registers(CarrayRegisters)),
 
     ?assertEqual(hyper:card(Gb),
                  hyper:card(hyper:from_json(hyper:to_json(Array), hyper_gb))),
     ?assertEqual(Array, hyper:from_json(hyper:to_json(Array), hyper_array)),
-    ?assertEqual(Bisect, hyper:from_json(hyper:to_json(Array), hyper_bisect)),
     ?assertEqual(Binary, hyper:from_json(hyper:to_json(Binary), hyper_binary)),
-    ?assertEqual(Carray, hyper:from_json(hyper:to_json(Carray), hyper_carray)),
 
 
     ?assertEqual(hyper:to_json(Gb), hyper:to_json(Array)),
-    ?assertEqual(hyper:to_json(Gb), hyper:to_json(Bisect)),
     ?assertEqual(hyper:to_json(Gb), hyper:to_json(Binary)),
-    ?assertEqual(hyper:to_json(Gb), hyper:to_json(Carray)),
 
     ?assertEqual(hyper:card(Gb), hyper:card(Array)),
-    ?assertEqual(hyper:card(Gb), hyper:card(Bisect)),
-    ?assertEqual(hyper:card(Gb), hyper:card(Binary)),
-    ?assertEqual(hyper:card(Gb), hyper:card(Carray)).
+    ?assertEqual(hyper:card(Gb), hyper:card(Binary)).
 
 
 
@@ -296,27 +278,6 @@ union_mixed_precision_t() ->
      || Mod <- [hyper_binary]].
 
 
-small_big_union_t() ->
-    random:seed(1, 2, 3),
-    SmallCard = 100,
-    BigCard   = 15000, % switches to dense at 10922 items
-
-    SmallSet = sets:from_list(generate_unique(SmallCard)),
-    BigSet   = sets:from_list(generate_unique(BigCard)),
-
-    SmallHyper = hyper:insert_many(sets:to_list(SmallSet),
-                                   hyper:new(15, hyper_bisect)),
-    BigHyper   = hyper:insert_many(sets:to_list(BigSet),
-                                   hyper:new(15, hyper_bisect)),
-    ?assertMatch({hyper_bisect, {sparse, _, _, _}}, SmallHyper#hyper.registers),
-    ?assertMatch({hyper_bisect, {dense, _}}, BigHyper#hyper.registers),
-
-    UnionHyper = hyper:union(SmallHyper, BigHyper),
-    TrueUnion = sets:size(sets:union(SmallSet, BigSet)),
-    ?assert(abs(hyper:card(UnionHyper) - TrueUnion) < TrueUnion * 0.01).
-
-
-
 intersect_card_t() ->
     random:seed(1, 2, 3),
 
@@ -344,7 +305,7 @@ bad_serialization_t() ->
     [begin
          P = 15,
          M = trunc(math:pow(2, P)),
-         {ok, WithNewlines} = file:read_file("../test/filter.txt"),
+         {ok, WithNewlines} = file:read_file("./test/filter.txt"),
          Raw = case zlib:gunzip(
                       base64:decode(
                         binary:replace(WithNewlines, <<"\n">>, <<>>))) of
@@ -379,41 +340,16 @@ bad_serialization_t() ->
 %%
 
 backends() ->
-    [hyper_gb, hyper_array, hyper_bisect, hyper_binary, hyper_carray].
+    [hyper_gb, hyper_array, hyper_binary].
 
 
 gen_values() ->
     ?SIZED(Size, gen_values(Size)).
 
 gen_values(0) ->
-    [<<(random:uniform(100000000000000)):64/integer>>];
+    [<<(rand:uniform(100000000000000)):64/integer>>];
 gen_values(Size) ->
-    [<<(random:uniform(100000000000000)):64/integer>> | gen_values(Size-1)].
-
-%%gen_values(0) ->
-%%    [non_empty(binary())];
-%%gen_values(Size) ->
-%%    [non_empty(binary()) | gen_values(Size-1)].
-
-gen_filters(Values) ->
-    ?LET(NumFilters, choose(2, 10),
-         gen_filters(Values, length(Values) div NumFilters, NumFilters)).
-
-gen_filters(Values, Size, 0) ->
-    [Values];
-gen_filters(Values, Size, NumFilters) ->
-    case split(Size, Values) of
-        {[], _} ->
-            [];
-        {Filter, Rest} ->
-            [Filter | gen_filters(Rest, Size, NumFilters-1)]
-    end.
-
-
-split(N, []) -> {[], []};
-split(N, L) when length(L) < N -> {L, []};
-split(N, L) -> lists:split(N, L).
-
+    [<<(rand:uniform(100000000000000)):64/integer>> | gen_values(Size-1)].
 
 gen_getset(P) ->
     ?SIZED(Size, gen_getset(Size, P)).
@@ -495,7 +431,6 @@ prop_union(Mod) ->
            hyper:card(Filter) =:= hyper:card(Union)
        end).
 
-
 %%
 %% HELPERS
 %%
@@ -519,7 +454,7 @@ random_bytes(N) ->
 
 random_bytes(Acc, 0) -> Acc;
 random_bytes(Acc, N) ->
-    Int = random:uniform(100000000000000),
+    Int = rand:uniform(100000000000000),
     random_bytes([<<Int:64/integer>> | Acc], N-1).
 
 

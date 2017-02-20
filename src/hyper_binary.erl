@@ -21,7 +21,6 @@
          encode_registers/1,
          decode_registers/2]).
 
-
 -define(VALUE_SIZE, 6).
 -define(MERGE_THRESHOLD, 0.05).
 
@@ -275,6 +274,7 @@ merge_buf(B, [{Index, Value} | Rest], PrevIndex, Acc) ->
 %% TESTS
 %%
 
+-ifdef(TEST).
 
 merge_test() ->
     P = 4, M = m(P),
@@ -316,3 +316,5 @@ serialize_test() ->
 
 max_registers_test() ->
     ?assertEqual([{3, 3}], max_registers([{3, 1}, {3, 2}, {3, 3}])).
+
+-endif.

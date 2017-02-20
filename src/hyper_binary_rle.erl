@@ -198,6 +198,7 @@ take_repeat(<<Repeats:?REPEAT, Value:?VALUE, Rest/binary>>) ->
 %%
 %% TESTS
 %%
+-ifdef(TEST).
 
 format({rle, <<?MARKER, B/binary>>}) ->
     rle_to_list(B).
@@ -297,6 +298,7 @@ proper_test_() ->
                           decode_registers(encode_registers(R), P))
      end}.
 
+-endif.
 
 
 
