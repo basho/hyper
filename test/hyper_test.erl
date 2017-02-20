@@ -59,7 +59,7 @@ serialization_t() ->
 
 
 reduce_precision_t() ->
-    random:seed(1, 2, 3),
+    random:seed(1, 2, 3), % TODO - Using rand instead of causes this test to consistently fail
     Card = 1000,
     Values = generate_unique(Card),
     [begin
