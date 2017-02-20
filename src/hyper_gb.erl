@@ -67,7 +67,7 @@ bytes({T, _}) ->
     erts_debug:flat_size(T) * 8.
 
 
--spec register_sum({gb_tree(),number()}) -> float().
+-spec register_sum({gb_tree:tree(), number()}) -> float().
 register_sum({T, M}) ->
     {MaxI, Sum} = fold(fun (Index, Value, {I, Acc}) ->
                             Zeroes = Index - I - 1,
@@ -120,8 +120,8 @@ do_decode_registers(<<Value:8/integer, Rest/binary>>, I) ->
 -ifdef(TEST).
 
 sum_test() ->
-    T = set(3, 5, set(1, 1, new(4))),
-
+    %% T = set(3, 5, set(1, 1, new(4))),
+    T = {{2, {1, 1, nil, {3, 5, nil, nil}}}, 16},
     ?assertEqual(lists:sum([
                             math:pow(2, -0), % 0
                             math:pow(2, -1), % 1
