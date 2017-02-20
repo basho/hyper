@@ -1,17 +1,14 @@
 -module(hyper_test).
--include_lib("proper/include/proper.hrl").
+-include_lib("eqc/include/eqc.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
 -record(hyper, {p, registers}). % copy of #hyper in hyper.erl
 
 hyper_test_() ->
-    ProperOpts = [{max_size, 1000},
-                  {numtests, 100},
-                  {to_file, user}],
     RunProp = fun (P) ->
                       {timeout, 600,
                        fun () ->
-                               ?assert(proper:quickcheck(P, ProperOpts))
+                               ?assert(eqc:quickcheck(P))
                        end}
               end,
 
@@ -308,7 +305,7 @@ bad_serialization_t() ->
     [begin
          P = 15,
          M = trunc(math:pow(2, P)),
-         {ok, WithNewlines} = file:read_file("../test/filter.txt"),
+         {ok, WithNewlines} = file:read_file("./test/filter.txt"),
          Raw = case zlib:gunzip(
                       base64:decode(
                         binary:replace(WithNewlines, <<"\n">>, <<>>))) of
@@ -350,9 +347,9 @@ gen_values() ->
     ?SIZED(Size, gen_values(Size)).
 
 gen_values(0) ->
-    [<<(random:uniform(100000000000000)):64/integer>>];
+    [<<(rand:uniform(100000000000000)):64/integer>>];
 gen_values(Size) ->
-    [<<(random:uniform(100000000000000)):64/integer>> | gen_values(Size-1)].
+    [<<(rand:uniform(100000000000000)):64/integer>> | gen_values(Size-1)].
 
 gen_getset(P) ->
     ?SIZED(Size, gen_getset(Size, P)).
@@ -457,7 +454,7 @@ random_bytes(N) ->
 
 random_bytes(Acc, 0) -> Acc;
 random_bytes(Acc, N) ->
-    Int = random:uniform(100000000000000),
+    Int = rand:uniform(100000000000000),
     random_bytes([<<Int:64/integer>> | Acc], N-1).
 
 
