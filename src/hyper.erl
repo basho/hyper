@@ -289,7 +289,9 @@ run_report(P, Card, Repetitions) ->
                           fun (I) ->
                                   io:format("~p values with p=~p, rep ~p~n",
                                             [Card, P, I]),
-                                  _ = random:seed(erlang:now()),
+                                  _ = random:seed(erlang:phash2([node()]),
+                                                  erlang:monotonic_time(),
+                                                  erlang:unique_integer()),
                                   Elements = generate_unique(Card),
                                   Estimate = card(insert_many(Elements, new(P))),
                                   abs(Card - Estimate) / Card
