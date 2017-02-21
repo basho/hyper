@@ -42,6 +42,7 @@ max_merge(Left, Right) ->
                  end
          end, Right, Left).
 
+-spec reduce_precision(any(), any()) -> no_return().
 reduce_precision(_NewP, _A) ->
     throw(not_implemented).
 

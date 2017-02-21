@@ -5,7 +5,11 @@
 %% inserts to perform in the future.
 
 -module(hyper_binary).
+
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-endif.
+
 -behaviour(hyper_register).
 %%-compile(native).
 

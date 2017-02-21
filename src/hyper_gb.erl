@@ -1,5 +1,7 @@
 -module(hyper_gb).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -behaviour(hyper_register).
 -export([new/1,
@@ -50,6 +52,7 @@ max_merge(Small, Big) ->
                   end
           end, Big, Small).
 
+-spec reduce_precision(any(), any()) -> no_return().
 reduce_precision(_NewP, _Register) ->
     throw(not_implemented).
 
@@ -67,7 +70,7 @@ bytes({T, _}) ->
     erts_debug:flat_size(T) * 8.
 
 
--spec register_sum({gb_tree(),number()}) -> float().
+-spec register_sum({{'_', '_'}, number()}) -> float().
 register_sum({T, M}) ->
     {MaxI, Sum} = fold(fun (Index, Value, {I, Acc}) ->
                             Zeroes = Index - I - 1,

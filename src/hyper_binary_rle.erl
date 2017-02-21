@@ -1,5 +1,7 @@
 -module(hyper_binary_rle).
+-ifdef(TEST).
 -include_lib("eunit/include/eunit.hrl").
+-endif.
 
 -export([new/1, set/3, compact/1, max_merge/1, max_merge/2,
          reduce_precision/2, bytes/1]).
@@ -62,6 +64,7 @@ max_merge(Small, Big) ->
     do_max_merge(Small, Big).
 
 
+-spec reduce_precision(any(), any()) -> no_return().
 reduce_precision(_NewP, _B) ->
     throw(not_implemented).
 
@@ -299,9 +302,3 @@ proper_test_() ->
      end}.
 
 -endif.
-
-
-
-
-
-
