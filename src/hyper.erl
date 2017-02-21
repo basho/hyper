@@ -245,7 +245,7 @@ random_bytes(N) ->
 
 random_bytes(Acc, 0) -> Acc;
 random_bytes(Acc, N) ->
-    Int = random:uniform(100000000000000),
+    Int = rand:uniform(100000000000000),
     random_bytes([<<Int:64/integer>> | Acc], N-1).
 
 
@@ -285,17 +285,18 @@ estimate_report() ->
 
 
 run_report(P, Card, Repetitions) ->
-    {ok, Estimations} = s2_par:map(
+   Estimations = lists:map(
                           fun (I) ->
                                   io:format("~p values with p=~p, rep ~p~n",
                                             [Card, P, I]),
-                                  _ = random:seed(erlang:now()),
+                                  _ = rand:seed(exsplus,{erlang:phash2([node()]),
+                                                         erlang:monotonic_time(),
+                                                         erlang:unique_integer()}),
                                   Elements = generate_unique(Card),
                                   Estimate = card(insert_many(Elements, new(P))),
                                   abs(Card - Estimate) / Card
                           end,
-                          lists:seq(1, Repetitions),
-                          [{workers, 8}]),
+                          lists:seq(1, Repetitions)),
 
     Hist = basho_stats_histogram:update_all(
              Estimations,
@@ -313,7 +314,7 @@ perf_report() ->
     Ps      = [15],
     Cards   = [1, 100, 500, 1000, 2500, 5000, 10000,
                15000, 25000, 50000, 100000, 1000000],
-    Mods    = [hyper_gb, hyper_array, hyper_binary, hyper_carray],
+    Mods    = [hyper_gb, hyper_array, hyper_binary],
     Repeats = 10,
 
     Time = fun (F, Args) ->
@@ -332,7 +333,7 @@ perf_report() ->
 
     R = [begin
              io:format("."),
-             _ = random:seed(1, 2, 3),
+             _ = rand:seed(exsplus,{1, 2, 3}),
 
              M = trunc(math:pow(2, P)),
              InsertUs = Time(fun (Values, H) ->
